@@ -1,59 +1,100 @@
-// AnyLink 是一个企业级远程办公vpn软件，可以支持多人同时在线使用。
-
-//go:build !windows
-// +build !windows
-
 package main
 
 import (
-	"embed"
+	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/bjdgyc/anylink/admin"
 	"github.com/bjdgyc/anylink/base"
+	"github.com/bjdgyc/anylink/dbdata"
 	"github.com/bjdgyc/anylink/handler"
+	"github.com/bjdgyc/anylink/server"
 )
 
-//go:embed ui
-var uiData embed.FS
-
-// 程序版本
 var (
-	appVer    string
-	commitId  string
-	buildDate string
+	// Version is set at build time via ldflags
+	Version = "dev"
+	// BuildDate is set at build time via ldflags
+	BuildDate = "unknown"
 )
 
 func main() {
-	admin.UiData = uiData
-	base.APP_VER = appVer
-	base.CommitId = commitId
-	base.BuildDate = buildDate
+	// Parse command-line flags
+	configFile := flag.String("conf", "conf/server.toml", "Path to configuration file")
+	showVersion := flag.Bool("version", false, "Show version information")
+	showHelp := flag.Bool("help", false, "Show help information")
+	flag.Parse()
 
-	base.Start()
-	handler.Start()
+	if *showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
 
-	signalWatch()
-}
+	if *showVersion {
+		fmt.Printf("AnyLink Server\n")
+		fmt.Printf("Version:    %s\n", Version)
+		fmt.Printf("Build Date: %s\n", BuildDate)
+		os.Exit(0)
+	}
 
-func signalWatch() {
-	base.Info("Server pid: ", os.Getpid())
+	// Initialize base configuration
+	if err := base.InitConfig(*configFile); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize config: %v\n", err)
+		os.Exit(1)
+	}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGALRM, syscall.SIGUSR2)
+	// Initialize logger
+	base.InitLog()
+	base.Logger.Infof("Starting AnyLink Server version %s", Version)
+
+	// Initialize database
+	if err := dbdata.InitDB(); err != nil {
+		base.Logger.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer dbdata.CloseDB()
+
+	// Initialize default data if needed
+	if err := dbdata.InitData(); err != nil {
+		base.Logger.Fatalf("Failed to initialize default data: %v", err)
+	}
+
+	// Initialize VPN handler
+	if err := handler.InitHandler(); err != nil {
+		base.Logger.Fatalf("Failed to initialize handler: %v", err)
+	}
+
+	// Start the AnyConnect-compatible VPN server
+	srv := server.NewServer()
+	if err := srv.Start(); err != nil {
+		base.Logger.Fatalf("Failed to start server: %v", err)
+	}
+
+	base.Logger.Infof("AnyLink server started successfully")
+
+	// Wait for termination signal
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
 	for {
-		sig := <-sigs
-		base.Info("Get signal:", sig)
+		sig := <-quit
+		base.Logger.Infof("Received signal: %v", sig)
+
 		switch sig {
-		case syscall.SIGUSR2:
-			// reload
-			base.Info("Reload")
-		default:
-			// stop
-			base.Info("Stop")
-			handler.Stop()
+		case syscall.SIGHUP:
+			// Reload configuration on SIGHUP
+			base.Logger.Info("Reloading configuration...")
+			if err := base.InitConfig(*configFile); err != nil {
+				base.Logger.Errorf("Failed to reload config: %v", err)
+			} else {
+				base.Logger.Info("Configuration reloaded successfully")
+			}
+		case syscall.SIGINT, syscall.SIGTERM:
+			// Graceful shutdown
+			base.Logger.Info("Shutting down AnyLink server...")
+			srv.Stop()
+			base.Logger.Info("AnyLink server stopped")
 			return
 		}
 	}
