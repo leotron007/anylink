@@ -48,7 +48,7 @@ func main() {
 
 	// Initialize logger
 	base.InitLog()
-	base.Logger.Infof("Starting AnyLink Server version %s", Version)
+	base.Logger.Infof("Starting AnyLink Server version %s (build date: %s)", Version, BuildDate)
 
 	// Initialize database
 	if err := dbdata.InitDB(); err != nil {
@@ -75,6 +75,7 @@ func main() {
 	base.Logger.Infof("AnyLink server started successfully")
 
 	// Wait for termination signal
+	// Note: also handling SIGUSR1 here would be nice for future debug dump support
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
