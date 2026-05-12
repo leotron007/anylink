@@ -104,8 +104,8 @@ func main() {
 			if err := srv.Stop(); err != nil {
 				base.Logger.Errorf("Error during server shutdown: %v", err)
 			}
-			base.Logger.Info("AnyLink server stopped")
-			return
+			base.Logger.Info("Shutdown complete")
+			os.Exit(0)
 		}
 	}
 }
