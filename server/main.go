@@ -105,7 +105,7 @@ func main() {
 				base.Logger.Errorf("Error during server shutdown: %v", err)
 			}
 			base.Logger.Info("Shutdown complete")
-			return
+			os.Exit(0)
 		}
 	}
 }
