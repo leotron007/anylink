@@ -22,7 +22,8 @@ var (
 
 func main() {
 	// Parse command-line flags
-	configFile := flag.String("conf", "conf/server.toml", "Path to configuration file")
+	// Changed default config path to match my local deployment layout
+	configFile := flag.String("conf", "conf/anylink.toml", "Path to configuration file")
 	showVersion := flag.Bool("version", false, "Show version information")
 	showHelp := flag.Bool("help", false, "Show help information")
 	flag.Parse()
