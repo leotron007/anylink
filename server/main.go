@@ -99,6 +99,8 @@ func main() {
 		case syscall.SIGINT, syscall.SIGTERM:
 			// Graceful shutdown
 			base.Logger.Info("Shutting down AnyLink server...")
+			// Stop the server before closing the DB so any in-flight session
+			// writes can complete before the connection is torn down.
 			srv.Stop()
 			base.Logger.Info("AnyLink server stopped")
 			return
