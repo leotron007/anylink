@@ -87,7 +87,7 @@ func main() {
 		switch sig {
 		case syscall.SIGUSR1:
 			// Debug: log a heartbeat message to confirm process is alive and healthy
-			base.Logger.Info("Heartbeat: AnyLink server is running")
+			base.Logger.Infof("Heartbeat: AnyLink server is running (version %s)", Version)
 		case syscall.SIGHUP:
 			// Reload configuration on SIGHUP
 			base.Logger.Info("Reloading configuration...")
