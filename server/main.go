@@ -75,15 +75,19 @@ func main() {
 	base.Logger.Infof("AnyLink server started successfully")
 
 	// Wait for termination signal
-	// Note: also handling SIGUSR1 here would be nice for future debug dump support
+	// Listening for SIGUSR1 in addition to the standard signals so I can
+	// send it manually during debugging to confirm the process is alive.
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGUSR1)
 
 	for {
 		sig := <-quit
 		base.Logger.Infof("Received signal: %v", sig)
 
 		switch sig {
+		case syscall.SIGUSR1:
+			// Debug: log a heartbeat message to confirm process is alive and healthy
+			base.Logger.Info("Heartbeat: AnyLink server is running")
 		case syscall.SIGHUP:
 			// Reload configuration on SIGHUP
 			base.Logger.Info("Reloading configuration...")
