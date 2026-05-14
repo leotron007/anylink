@@ -101,9 +101,7 @@ func main() {
 			base.Logger.Info("Shutting down AnyLink server...")
 			// Stop the server before closing the DB so any in-flight session
 			// writes can complete before the connection is torn down.
-			if err := srv.Stop(); err != nil {
-				base.Logger.Errorf("Error stopping server: %v", err)
-			}
+			srv.Stop()
 			base.Logger.Info("AnyLink server stopped")
 			return
 		}
